@@ -1,0 +1,327 @@
+<html !DOCTYPE>
+  <head>
+    <meta charset="utf8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+      .audio-player{
+        width: 200px;
+        height: 120px;
+        padding: 8px;
+        margin: 0 auto;
+        margin-top: 100px;
+        background: #666;
+      }
+
+      .progress-control{
+        width: 100%;
+        height: 70px;
+        box-sizing: border-box;
+      }
+
+      .progress-bar-container{
+        width: 100%;
+        height: 2px;
+        padding: 8px 0;
+      }
+
+      .progress-bar{
+        width: 100%;
+        height: 2px;
+        border-radius: 1px;
+        background: #ccc;
+        cursor: pointer;
+      }
+
+      .progress-passed{
+        position: relative;
+        width: 0;
+        height: 100%;
+        border-radius: 1px;
+        background: #fff;
+      }
+
+      .progress-point{
+        position: absolute;
+        top: -3px;
+        right: -4px;
+        width: 8px;
+        height: 8px;
+        box-sizing: border-box;
+        border-radius: 5px;
+        background: #fff;
+      }
+
+      .time-show{
+        width: 100%;
+        height: 12px;
+        line-height: 12px;
+        font-size: 12px;
+        color: #ccc;
+        user-select: none;
+      }
+
+      .play-control-container{
+        width: 100%;
+        height: 35px;
+        margin-top: 3px;
+        user-select: none;
+      }
+
+      .play-control{
+        width: 145px;
+        height: 100%;
+        margin: 0 auto;
+        font-size: 12px;
+        line-height: 33px;
+        text-align: center;
+        color: #eee;
+      }
+
+      .play-control > div{
+        float: left;
+        cursor: pointer;
+      }
+
+      .play-btn{
+        width: 35px;
+        height: 100%;
+        box-sizing: border-box;
+        border: 1px solid #eee;
+        border-radius: 18px;
+      }
+
+      .back-btn, .forward-btn{
+        width: 35px;
+        height: 100%;
+        margin: 0 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="audio-player">
+      <div class="audio-container">
+        <audio id="audio" src="./bdth.mp3" style="display:none"></audio>
+        <canvas id="canvas" width="200px" height="50px"></canvas>
+      </div>
+
+      <div class="progress-control">
+        <div class="progress-bar-container"
+          onmouseenter="handleMouseEnter()"
+          onmouseleave="handleMouseLeave()"
+        >
+          <div 
+            class="progress-bar" 
+            onmousedown="handleAudioSeek(event)" 
+            onmousemove="handleDrag(event)"
+          >
+            <div class="progress-passed">
+              <div 
+                class="progress-point" 
+                onmousedown="handleStartDrag(event)" 
+                onmouseup="handleEndDrag()"
+                onmousemove="handleDrag(event)"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="time-show">
+          <span class="time-passed">00:00</span>
+          <span class="time-total" style="float:right;">00:00</span>
+        </div>
+
+        <div class="play-control-container">
+          <div class="play-control">
+            <div class="back-btn">
+              <span onclick="handleBack()">快退</span>
+            </div>
+            <div class="play-btn" onclick="handlePlay()">播放</div>
+            <div class="forward-btn">
+              <span onclick="handleForward()">快进</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script>
+    var playStatus = false,
+        playText = "",
+        animationTimer = 0,
+        dragStart = false;
+
+    var audio = document.getElementById("audio");
+    handleChangeAudioDuration();
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("durationchange", handleChangeAudioDuration);
+    audio.addEventListener("ended", handleAduioEnded);
+
+    function handleTimeUpdate(){
+      document.querySelector('.time-passed').innerHTML = formatTime(audio.currentTime);
+      if(audio.duration){
+        document.querySelector('.progress-passed').style.width = (audio.currentTime / audio.duration) * 100 + "%";
+      }
+    }
+
+    function handleChangeAudioDuration(){
+      document.querySelector('.time-total').innerHTML = formatTime(audio.duration);
+    }
+
+    function handleAduioEnded(){
+      handlePlay();
+    }
+
+    function handleAudioSeek(e){
+      var offset = e.pageX - document.querySelector('.progress-bar').offsetLeft;
+      var percent = offset / document.querySelector('.progress-bar').offsetWidth;
+      document.querySelector('.progress-passed').style.width = percent * 100 + '%';
+      if(audio.duration){
+        audio.currentTime = audio.duration * percent;
+      }
+    }
+
+    function handleStartDrag(e){
+      e.stopPropagation();
+      dragStart = true;
+    }
+
+    function handleEndDrag(){
+      dragStart = false;
+    }
+
+    document.addEventListener("mouseup", handleEndDrag);
+
+    function handleDrag(e){
+      if(!dragStart) return;
+      var offset = e.pageX - document.querySelector('.progress-bar').offsetLeft;
+      var percent = offset / document.querySelector('.progress-bar').offsetWidth;
+      document.querySelector('.progress-passed').style.width = percent * 100 + '%';
+      if(audio.duration){
+        audio.currentTime = audio.duration * percent;
+      }
+    }
+
+    function handleMouseEnter(){
+      if(audio.paused){
+        document.querySelector('.progress-point').style.display = 'inline-block';
+      }
+    }
+
+    function handleMouseLeave(){
+      if(audio.paused){
+        document.querySelector('.progress-point').style.display = 'none';
+      }
+    }
+
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    var cWidth = canvas.width;
+    var cHeight = canvas.height;
+    
+    ctx.fillStyle = "#fff";
+    for(var i = 0; i < 64; i++){
+      ctx.fillRect(i * 3.125, cHeight - 2, 1.5, 2);
+    }
+
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    
+    var atx, source, draw;
+
+    function play(){
+      atx = new AudioContext();
+      source = atx.createMediaElementSource(audio);
+
+      analyser = atx.createAnalyser();
+      source.connect(analyser);
+      analyser.connect(atx.destination);
+
+      analyser.fftSize = 128;
+
+      function draw(){
+        var audioArray = new Uint8Array(analyser.frequencyBinCount);
+
+        analyser.getByteFrequencyData(audioArray);
+        ctx.clearRect(0, 0, cWidth, cHeight);
+        ctx.fillStyle = "#fff";
+
+        for(var i = 0; i < audioArray.length; i++){
+          var yOffset = cHeight - audioArray[i] / 5.12;
+          var y = yOffset < (cHeight - 2) ? yOffset : (cHeight - 2);
+          ctx.fillRect(i * 3.125, y, 1.5, cHeight);
+        }
+
+        animationTimer = requestAnimationFrame(draw);
+      }
+
+      return draw;
+    }
+
+    function handlePlay(){
+      var pointStatus;
+      if(playStatus){
+        playStatus = false;
+        playText = "播放";
+        pointStatus = "none";
+        pause();
+      }else{
+        playStatus = true;
+        playText = "暂停";
+        pointStatus = "inline-block";
+        if(!atx){
+          draw = play();
+        }
+        draw();
+        audio.play();
+      }
+      document.querySelector('.progress-point').style.display = pointStatus;
+      document.querySelector('.play-btn').innerHTML = playText;
+    }
+
+    function pause(){
+      cancelAnimationFrame(animationTimer);
+      audio.pause();
+    }
+
+    function handleForward(){
+      if(!audio.duration){
+        return
+      }
+
+      if(audio.currentTime < audio.duration - 1){
+        audio.currentTime += 1;
+      }
+    }
+
+    function handleBack(){
+      if(audio.currentTime > 1){
+        audio.currentTime -= 1;
+      }
+    }
+
+    function formatTime(second){
+      if(!second) return "";
+      var h = Math.floor((second / 3600) % 24);
+      var m = Math.floor((second / 60) % 60);
+      var s = Math.floor(second % 60);
+      var result = "";
+
+      if(s < 10) s = "0" + s;
+
+      if(m > 0){
+        if(m < 10) m = "0" + m;
+      }else{
+        m = "00";
+      }
+
+      result = m + ":" + s;
+
+      if(h > 0){
+        if(h < 10) h = "0" + h;
+        result = h + ":" + m + ":" + s;
+      }
+
+      return result;
+    }
+  </script>
+</html>
